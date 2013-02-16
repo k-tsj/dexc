@@ -2,6 +2,8 @@
 #
 # Copyright (C) 2013 Kazuki Tsujimoto, All rights reserved.
 
+raise LoadError, "TracePoint is undefined. Use Ruby 2.0.0 or later." unless defined? TracePoint
+
 require 'dexc/version'
 
 module Dexc
