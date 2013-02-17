@@ -67,10 +67,10 @@ module Dexc
           b.pry
         rescue LoadError
           require 'irb'
-          IRB::Irb.module_eval do
+          IRB::Irb.class_eval do
             alias_method :eval_input_orig, :eval_input
             define_method(:eval_input) do
-              IRB::Irb.module_eval { alias_method :eval_input, :eval_input_orig }
+              IRB::Irb.class_eval { alias_method :eval_input, :eval_input_orig }
               require 'irb/ext/multi-irb'
               IRB.irb(nil, b)
             end
