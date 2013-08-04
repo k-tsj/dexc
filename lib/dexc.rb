@@ -64,6 +64,10 @@ module Dexc
 
         begin
           require 'pry'
+          Pry.config.hooks.add_hook(:when_started, :dexc_init_ex) do |_, _, pry|
+            pry.last_exception = exc
+            pry.backtrace = (exc.backtrace || [])
+          end
           b.pry
         rescue LoadError
           require 'irb'
