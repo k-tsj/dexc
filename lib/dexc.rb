@@ -29,6 +29,38 @@ module Dexc
   RaiseEvent  = Struct.new(:event, :raised_exception)
   ReturnEvent = Struct.new(:event, :lineno, :path, :defined_class, :method_id, :return_value)
 
+  # See MiniTest::Unit::TestCase::PASSTHROUGH_EXCEPTIONS
+  # to know why SystemExit is used
+  class ExceptionWrapper < SystemExit
+    attr_reader :wrapped_exception
+
+    def initialize(wrapped_exception)
+      super(nil)
+      @wrapped_exception = wrapped_exception
+    end
+  end
+
+  module MiniTestPassThroughException
+    def run_test(*)
+      super
+    rescue => e
+      raise ExceptionWrapper, e
+    end
+  end
+
+  class ::Object
+    prepend Module.new {
+      def require(path)
+        super
+        if path == 'minitest/unit'
+          MiniTest::Unit::TestCase.class_eval do
+            prepend MiniTestPassThroughException
+          end
+        end
+      end
+    }
+  end
+
   def start
     events = RingBuffer.new(30)
 
@@ -44,6 +76,9 @@ module Dexc
 
     at_exit do
       exc = $!
+      if exc.kind_of?(ExceptionWrapper)
+        exc = exc.wrapped_exception
+      end
       tp.disable
       b = exc.instance_variable_get(EXC_BINDING_VAR)
       if exc.kind_of?(StandardError) and b
