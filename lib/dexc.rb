@@ -29,9 +29,10 @@ module Dexc
   RaiseEvent  = Struct.new(:event, :raised_exception)
   ReturnEvent = Struct.new(:event, :lineno, :path, :defined_class, :method_id, :return_value)
 
-  # See MiniTest::Unit::TestCase::PASSTHROUGH_EXCEPTIONS
-  # to know why SystemExit is used
-  class ExceptionWrapper < SystemExit
+  # See MiniTest::Unit::TestCase::PASSTHROUGH_EXCEPTIONS,
+  # Test::Unit::ErrorHandler::PASS_THROUGH_EXCEPTIONS
+  # to know why Interrupt is used
+  class ExceptionWrapper < NoMemoryError
     attr_reader :wrapped_exception
 
     def initialize(wrapped_exception)
@@ -40,7 +41,7 @@ module Dexc
     end
   end
 
-  module MiniTestPassThroughException
+  module TestPassThroughException
     def run_test(*)
       super
     rescue => e
@@ -51,10 +52,15 @@ module Dexc
   class ::Object
     prepend Module.new {
       def require(path)
-        super
-        if path == 'minitest/unit'
-          MiniTest::Unit::TestCase.class_eval do
-            prepend MiniTestPassThroughException
+        super.tap do
+          if path == 'minitest/unit'
+            MiniTest::Unit::TestCase.class_eval do
+              prepend TestPassThroughException
+            end
+          elsif path == 'test/unit'
+            Test::Unit::TestCase.class_eval do
+              prepend TestPassThroughException
+            end
           end
         end
       end
