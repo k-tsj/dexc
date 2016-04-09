@@ -1,3 +1,3 @@
 module Dexc
-  VERSION = "0.0.3dev"
+  VERSION = "0.0.3"
 end
