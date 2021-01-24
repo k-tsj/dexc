@@ -5,6 +5,8 @@
 raise LoadError, "TracePoint is undefined. Use Ruby 2.0.0 or later." unless defined? TracePoint
 
 require 'dexc/version'
+require 'irb/color'
+require 'irb/color_printer'
 
 module Dexc
   EXC_BINDING_VAR = :@dexc_binding
@@ -126,7 +128,7 @@ module Dexc
     file_cache = {}
     events.each_with_index do |i, idx|
       show_line(i.path, i.lineno, idx, idx_width, file_cache)
-      puts " " * (idx_width + 1) + "#{i.defined_class}##{i.method_id}#{i.event == :b_return ? '(block)' : ''}: #{i.return_value.inspect}"
+      puts " " * (idx_width + 1) + "#{i.defined_class}##{i.method_id}#{i.event == :b_return ? '(block)' : ''}: #{IRB::ColorPrinter.pp(i.return_value.inspect, '')}"
     end
     puts
   end
@@ -136,7 +138,7 @@ module Dexc
     print "#{"%#{index_width}d" % index}:#{path}:#{lineno}"
     begin
       cache[path] ||= open(path).each_line.map(&:chomp)
-      print "> #{lineno > 0 ? cache[path][lineno - 1] : ''}"
+      print "> #{lineno > 0 ? ::IRB::Color.colorize_code(cache[path][lineno - 1], complete: false, ignore_error: true) : ''}"
     rescue Errno::ENOENT
       cache[path] = []
     end
