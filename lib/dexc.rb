@@ -96,7 +96,7 @@ module Dexc
         return_values = return_events.map(&:return_value)
 
         show_trace(return_events)
-        error_print(exc)
+        puts exc.full_message
 
         Kernel.module_eval do
           define_method(:dexc_hist) do
@@ -145,34 +145,6 @@ module Dexc
     puts
   end
   module_function :show_line
-
-  # from Irb#eval_input(lib/irb.rb)
-  def error_print(exc)
-    print exc.class, ": ", exc, "\n"
-    messages = []
-    lasts = []
-    levels = 0
-    back_trace_limit = 30
-    for m in exc.backtrace
-      if m
-        if messages.size < back_trace_limit
-          messages.push "\tfrom "+m
-        else
-          lasts.push "\tfrom "+m
-          if lasts.size > back_trace_limit
-            lasts.shift
-            levels += 1
-          end
-        end
-      end
-    end
-    print messages.join("\n"), "\n"
-    unless lasts.empty?
-      printf "... %d levels...\n", levels if levels > 0
-      print lasts.join("\n")
-    end
-  end
-  module_function :error_print
 end
 
 Dexc.start
