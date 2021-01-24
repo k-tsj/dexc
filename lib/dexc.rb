@@ -1,6 +1,6 @@
 # dexc.rb
 #
-# Copyright (C) 2013-2016 Kazuki Tsujimoto, All rights reserved.
+# Copyright (C) 2013 Kazuki Tsujimoto, All rights reserved.
 
 raise LoadError, "TracePoint is undefined. Use Ruby 2.0.0 or later." unless defined? TracePoint
 
