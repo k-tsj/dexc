@@ -32,44 +32,6 @@ module Dexc
   RaiseEvent  = Struct.new(:event, :raised_exception)
   ReturnEvent = Struct.new(:event, :lineno, :path, :defined_class, :method_id, :return_value)
 
-  # See MiniTest::Unit::TestCase::PASSTHROUGH_EXCEPTIONS,
-  # Test::Unit::ErrorHandler::PASS_THROUGH_EXCEPTIONS
-  # to know why Interrupt is used
-  class ExceptionWrapper < NoMemoryError
-    attr_reader :wrapped_exception
-
-    def initialize(wrapped_exception)
-      super(nil)
-      @wrapped_exception = wrapped_exception
-    end
-  end
-
-  module TestPassThroughException
-    def run_test(*)
-      super
-    rescue => e
-      raise ExceptionWrapper, e
-    end
-  end
-
-  class ::Object
-    prepend Module.new {
-      def require(path)
-        super.tap do
-          if path == 'minitest/unit'
-            MiniTest::Unit::TestCase.class_eval do
-              prepend TestPassThroughException
-            end
-          elsif path == 'test/unit'
-            Test::Unit::TestCase.class_eval do
-              prepend TestPassThroughException
-            end
-          end
-        end
-      end
-    }
-  end
-
   module IrbHelper
     def dexc_print_frame
       @dexc_callers.each_with_index do |i, idx|
@@ -125,9 +87,6 @@ module Dexc
 
     at_exit do
       exc = $!
-      if exc.kind_of?(ExceptionWrapper)
-        exc = exc.wrapped_exception
-      end
       tp.disable
       callers = exc.instance_variable_get(EXC_CALLERS_VAR)
       if exc.kind_of?(StandardError) and callers
