@@ -10,10 +10,12 @@ Gem::Specification.new do |s|
   s.summary     = %q{A library that helps you to debug an exception}
   s.description = %q{Automatically start the REPL and show trace on an exception to debug.}
 
-  s.files            = `git ls-files`.split("\n")
-  s.test_files       = `git ls-files -- {test,spec,features}/*`.split("\n")
-  s.executables      = `git ls-files -- bin/*`.split("\n").map{|f| File.basename(f) }
-  s.require_paths    = ['lib']
+  s.files = Dir.chdir(File.expand_path(__dir__)) do
+    `git ls-files -z`.split("\x0").reject { |f| f.match(%r{\A(?:test|spec|features)/}) }
+  end
+  s.bindir        = "exe"
+  s.executables   = s.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
+  s.require_paths = ["lib"]
   s.add_runtime_dependency 'irb'
   s.add_runtime_dependency 'binding_of_caller'
   s.add_development_dependency 'rake'
