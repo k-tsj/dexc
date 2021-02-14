@@ -7,9 +7,10 @@ raise LoadError, "TracePoint is undefined. Use Ruby 2.0.0 or later." unless defi
 require 'dexc/version'
 require 'irb/color'
 require 'irb/color_printer'
+require 'binding_of_caller'
 
 module Dexc
-  EXC_BINDING_VAR = :@dexc_binding
+  EXC_CALLERS_VAR = :@dexc_callers
 
   class RingBuffer
     def initialize(n)
@@ -69,13 +70,53 @@ module Dexc
     }
   end
 
+  module IrbHelper
+    def dexc_print_frame
+      @dexc_callers.each_with_index do |i, idx|
+        if @dexc_callers_idx == idx
+          print ' => '
+        else
+          print '    '
+        end
+        print("[%#{@dexc_callers_width}d] " % idx)
+        filename, lineno = i.source_location
+        puts "#{filename}:#{lineno}:in `#{i.frame_description}'"
+      end
+    end
+
+    def dexc_current_frame
+      @dexc_callers[@dexc_callers_idx]
+    end
+
+    def dexc_up_frame
+      if @dexc_callers_idx < @dexc_callers.length - 1
+        @dexc_callers_idx += 1
+      end
+      dexc_current_frame
+    end
+
+    def dexc_down_frame
+      if @dexc_callers_idx > 0
+        @dexc_callers_idx -= 1
+      end
+      dexc_current_frame
+    end
+
+    def dexc_change_frame(idx)
+      if (0...@dexc_callers.length) === idx
+        @dexc_callers_idx = idx
+      end
+      dexc_current_frame
+    end
+  end
+
   def start
     events = RingBuffer.new(30)
 
     tp = TracePoint.new(:raise, :return, :c_return, :b_return) do |tp|
       if tp.event == :raise
         exc = tp.raised_exception
-        exc.instance_variable_set(EXC_BINDING_VAR, tp.binding)
+        exc.instance_variable_set(EXC_CALLERS_VAR, tp.binding.callers[1..-1])
         events.add(RaiseEvent.new(tp.event, exc))
       else
         events.add(ReturnEvent.new(tp.event, tp.lineno, tp.path, tp.defined_class, tp.method_id, tp.return_value))
@@ -88,8 +129,8 @@ module Dexc
         exc = exc.wrapped_exception
       end
       tp.disable
-      b = exc.instance_variable_get(EXC_BINDING_VAR)
-      if exc.kind_of?(StandardError) and b
+      callers = exc.instance_variable_get(EXC_CALLERS_VAR)
+      if exc.kind_of?(StandardError) and callers
         raise_idx = events.to_a.find_index {|i| i.event == :raise and i.raised_exception == exc }
         latest_events = raise_idx ? events.to_a[0...raise_idx] : []
         return_events = latest_events.find_all {|i| i.event != :raise }
@@ -111,9 +152,24 @@ module Dexc
             pry.last_exception = exc
             pry.backtrace = (exc.backtrace || [])
           end
-          b.pry
+          callers[0].pry
         rescue LoadError
-          b.irb
+          require 'irb'
+          IRB::Context.include(IrbHelper)
+          require 'dexc/irb/cmd/stack_explorer'
+          b = callers[0]
+          filename = b.source_location[0]
+          IRB.setup(filename, argv: [])
+          workspace = IRB::WorkSpace.new(b)
+          STDOUT.print(workspace.code_around_binding)
+          binding_irb = IRB::Irb.new(workspace)
+          binding_irb.context.irb_path = File.expand_path(filename)
+          binding_irb.context.instance_eval do
+            @dexc_callers = callers
+            @dexc_callers_width = Math.log10(callers.length).floor + 1
+            @dexc_callers_idx = 0
+          end
+          binding_irb.run(IRB.conf)
         end
         exit!
       end
