@@ -20,4 +20,5 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'test-unit'
   s.extra_rdoc_files = ['README.rdoc']
   s.rdoc_options     = ['--main', 'README.rdoc']
+  s.licenses         = ['BSD-2-Clause', 'Ruby']
 end
